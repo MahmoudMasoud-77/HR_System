@@ -1,0 +1,329 @@
+﻿
+@{
+    ViewData["Title"] = "Index";
+}
+
+@model List<fullAttendanceData>
+
+
+
+            
+
+    <div>
+        <div class="row">
+            <div class="col-sm-12 col-md-2">
+                <select id="searchoption" class="form-control">
+                    <option value="empName">Empeloyee Name</option>
+                    <option value="deptName">Department Name</option>
+                </select>
+            </div>
+            <div class="col-sm-12 col-md-4">
+                <input type="text" id="searchtext" onkeyup="filterByEmpOrDeptName()" placeholder="Search for .." class="form-control" aria-controls="DataTables_Table_0">
+            </div>
+
+            <div class="col-sm-12 offset-md-4 col-md-2">
+                <button type="button" class="btn btn-primary mb-2 float-right" style="margin:0 !important">
+                    <a href="/Attendance/New"><i class="ft-plus"></i> Add New</a>
+                </button>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="row">
+            <div class="col-sm-12 col-md-3">
+                <label>Start Date</label>
+                <input type="date" id="startDateInFilterByDate" class="form-control"/>
+            </div>
+
+            <div class="col-sm-12 col-md-3">
+                <label>End Date</label>
+                <input type="date" id="endDateInFilterByDate" class="form-control"/>
+            </div>
+
+            <div class="col-sm-12 col-md-2 d-flex align-items-end">
+                <button type="button" id="btnFilterByDate" class="btn btn-primary mb-2" onclick="filterByDate()" style="margin:0 !important">
+                    Filter
+                </button>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="row" style="padding-left:15px;">
+            <form asp-action="GetFileExcel" class="float-right" asp-controller="Attendance" method="post" enctype="multipart/form-data">
+                <label>Upload Excel Sheeat</label>
+                <div>
+                    <div class="custom-file" style="padding-left:12px;">
+                        <div style="position: relative;display: inline-block;">
+                            <input type="file" name="file" class="custom-file-input" id="file" style="cursor:pointer;">
+                            <label class="custom-file-label" for="file">Choose file</label>
+                        </div>
+                        <div style="display: inline-block;">
+                            <button type="submit" class="btn btn-success mr-1" style="margin: 2px 0 0 15px; cursor:pointer;">Upload</button>
+                        </div> 
+                    </div>
+
+@*
+                    <label class="file" for="file" style="margin: 0; cursor:pointer;">
+                        <input type="file" name="file" class="form-control" id="file" aria-label="File browser example" style="margin: 0; padding: 0px; color: #5a5a5a; cursor:pointer;">
+                    </label>*@
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <br />
+
+
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <td>Id</td>
+            <td>Department Name</td>
+            <td>Empeloyee Name</td>
+            <td>Attendance Time</td>
+            <td>Absence Time</td>
+            <td>Date</td>
+            <td>Edit</td>
+        </tr>
+    </thead>
+    <tbody id="tableShowAttendance">
+    </tbody>
+</table>
+
+
+<div class="pagnation" id="pagnation">
+
+
+</div>
+
+
+
+
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+
+<script>
+
+    let numOfRecordInOnePage = 15;
+    let currentRowNumber = 1;
+    let numOfAllPages = 0;
+    let pageNumInInput = 1;
+
+    window.onload = function loadDataWhenPageLoaded(){
+        
+        let urlBody = "/Attendance/GetAllDataByJson?countOfRecors=";
+
+        $.ajax(
+            {
+                url: "/Attendance/GetCountOfAllRecords",
+                success: function(result) {
+
+                    let countOfPages = Math.ceil(result / numOfRecordInOnePage);
+                    numOfAllPages = countOfPages;
+
+                    
+
+                    if (result == 0) { currentRowNumber = 0; }
+
+                    document.getElementById("pagnation").innerHTML += `<div class="tablenav-pages">
+                        <span class="displaying-num">` + result + ` items</span>
+                        <span class="pagination-links">
+                            <a class="first-page button" onclick="(GetRecordes(numOfRecordInOnePage, 1, `+ numOfAllPages + `,'` + urlBody + `'));"><span aria-hidden="true">«</span></a>
+                            <a class="prev-page button" onclick="(GetRecordes(numOfRecordInOnePage, (parseInt(currentRowNumber) - 1), `+ numOfAllPages + `,'` + urlBody + `'));"><span aria-hidden="true">‹</span></a>
+                            <span class="screen-reader-text">Current Page </span><span id="table-paging" class="paging-input"><span class="tablenav-paging-text"><input type="number" id="currentPageNumber" min="0" max="`+ numOfAllPages + `" value="` + currentRowNumber + `"/> of <span class="total-pages">` + countOfPages + `</span></span></span>
+                            <a class="next-page button" onclick="(GetRecordes(numOfRecordInOnePage, (parseInt(currentRowNumber) + 1), `+ numOfAllPages + `,'` + urlBody + `'));"><span aria-hidden="true">›</span></a>
+                            <a class="last-page button" onclick="(GetRecordes(numOfRecordInOnePage, `+ countOfPages + `, ` + numOfAllPages + `,'` + urlBody + `'))"><span aria-hidden="true">»</span></a>
+                            <a class="button" onclick="(GetRecordes(numOfRecordInOnePage, (getCurrentPageNum()), ` + numOfAllPages + `,'` + urlBody + `'))">Go</a>
+                        </span>
+                    </div>`;
+                
+                    GetRecordes(numOfRecordInOnePage, 1, numOfAllPages, urlBody);
+                
+                }
+            }
+            
+        );
+        
+    }
+
+
+
+    function GetRecordes(countOfRecors, rowNumber, numOfAllPages, urlBody) {
+
+        if (rowNumber > 0 && rowNumber <= numOfAllPages) {
+            let urlPath = urlBody + countOfRecors + "&rowNumber=" + rowNumber;
+
+            getDataFiltered(urlPath, rowNumber, false);
+
+            document.getElementById('currentPageNumber').addEventListener("change", function(evt) {
+                pageNumInInput = this.value;
+            });
+            currentRowNumber = rowNumber;
+        }
+
+        
+    }
+
+    function getCurrentPageNum() { 
+        return (document.getElementById('currentPageNumber').value);
+    }
+
+
+    function getDataFiltered(urlPath, rowNumber, ifFiltered) { 
+
+        $.ajax(
+            {
+                url: urlPath,
+                success: function(result) {
+
+
+                    document.querySelector('#pagnation #currentPageNumber').value = rowNumber;
+                    document.getElementById("tableShowAttendance").innerHTML = "";
+
+                    if (result.count == 0) {
+                        document.getElementById("tableShowAttendance").innerHTML = "";          
+                        document.getElementById('tableShowAttendance').innerHTML = "<tr><td colspan='7'>No Record Matched</td></tr>";
+                    }
+
+                    let count = 1;
+                    for (let i = 0; i < numOfRecordInOnePage; i++) {
+                        
+                        let currentAbsenceTime = "";
+                        try { 
+                            if ((new Date(result[i].absenceTime)).toLocaleTimeString([], { timeStyle: 'short' }) != "12:00 AM") 
+                            { currentAbsenceTime = (new Date(result[i].absenceTime)).toLocaleTimeString([], { timeStyle: 'short' }); }
+                        } catch { }
+
+                        document.getElementById("tableShowAttendance").innerHTML +=
+                            "<tr><td>" + count++ + "</td>" +
+                            "<td>" + result[i].deptName + "</td>" +
+                            "<td>" + result[i].empName + "</td>" +
+                            "<td>" + (new Date(result[i].attendanceTime)).toLocaleTimeString([], {timeStyle: 'short'}) + "</td>" +
+                            "<td>" + currentAbsenceTime + "</td>" +
+                            "<td>" + (new Date(result[i].date)).toLocaleDateString() + "</td>" +
+                            "<td><a href='/Attendance/Edit/" + result[i].id + "'>Edit</a></td></tr>";
+                    }	
+                }
+            }
+        );
+    }
+
+
+
+    function filterByEmpOrDeptName(){
+
+        var searchOption = $('#searchoption').val();
+        var searchText = $('#searchtext').val();
+        
+        let urlPath;
+        let urlPathForCount;
+        if (searchText.trim() == "") 
+        { 
+            urlPath = '/Attendance/FilterRecordsByEmpName?searchText=PrintAll&searchBy=PrintAll'; 
+            urlPathForCount = '/Attendance/GetCountOfFilteredRecordsByEmpName?searchText=PrintAll&searchBy=PrintAll'; 
+        }
+        else 
+        { 
+            urlPath='/Attendance/FilterRecordsByEmpName?searchText=' + searchText + '&searchBy=' + searchOption; 
+            urlPathForCount='/Attendance/GetCountOfFilteredRecordsByEmpName?searchText=' + searchText + '&searchBy=' + searchOption; 
+        }
+
+
+        let urlBody = urlPath + "&countOfRecors=";
+
+        $.ajax(
+            {
+                url: urlPathForCount,
+                success: function(result) {
+
+                    let countOfPages = Math.ceil(result / numOfRecordInOnePage);
+                    numOfAllPages = countOfPages;
+
+
+                    if (result == 0) { currentRowNumber = 0; }
+
+                    document.getElementById("pagnation").innerHTML = "";
+                    document.getElementById("pagnation").innerHTML += `<div class="tablenav-pages">
+                        <span class="displaying-num">` + result + ` items</span>
+                        <span class="pagination-links">
+                            <a class="first-page button" onclick="(GetRecordes(numOfRecordInOnePage, 1, `+ numOfAllPages + `,'` + urlBody + `'));"><span aria-hidden="true">«</span></a>
+                            <a class="prev-page button" onclick="(GetRecordes(numOfRecordInOnePage, (parseInt(currentRowNumber) - 1), `+ numOfAllPages + `,'` + urlBody + `'));"><span aria-hidden="true">‹</span></a>
+                            <span class="screen-reader-text">Current Page </span><span id="table-paging" class="paging-input"><span class="tablenav-paging-text"><input type="number" id="currentPageNumber" min="0" max="`+ numOfAllPages + `" value="` + currentRowNumber + `"/> of <span class="total-pages">` + countOfPages + `</span></span></span>
+                            <a class="next-page button" onclick="(GetRecordes(numOfRecordInOnePage, (currentRowNumber + 1), `+ numOfAllPages + `,'` + urlBody + `'));"><span aria-hidden="true">›</span></a>
+                            <a class="last-page button" onclick="(GetRecordes(numOfRecordInOnePage, `+ countOfPages + `, ` + numOfAllPages + `,'` + urlBody + `'))"><span aria-hidden="true">»</span></a>
+                            <a class="button" onclick="(GetRecordes(numOfRecordInOnePage, (getCurrentPageNum()), ` + numOfAllPages + `,'` + urlBody + `'))">Go</a>
+                        </span>
+                    </div>`;
+                
+                   if (result == 0) {
+                        document.getElementById("tableShowAttendance").innerHTML = "";          
+                        document.getElementById('tableShowAttendance').innerHTML = "<tr><td colspan='7'>No Record Matched</td></tr>";
+                    }
+
+                    GetRecordes(numOfRecordInOnePage, 1, numOfAllPages, urlBody);
+
+                }
+            }
+        );
+        
+    }
+
+
+
+    function filterByDate(){
+
+        var startDate = $('#startDateInFilterByDate').val();
+        var endDate = $('#endDateInFilterByDate').val();
+        
+        let urlPath = "/Attendance/FilterRecordsByDate?startDate=" + startDate + "&endDate=" + endDate;
+        let urlPathForCount='/Attendance/GetCountOfFilteredRecordsByDate?startDate=' + startDate + '&endDate=' + endDate; 
+
+
+
+        let urlBody = urlPath + "&countOfRecors=";
+
+        $.ajax(
+            {
+                url: urlPathForCount,
+                success: function(result) {
+
+                    let countOfPages = Math.ceil(result / numOfRecordInOnePage);
+                    numOfAllPages = countOfPages;
+
+
+                    if (result == 0) { currentRowNumber = 0; }
+
+                    document.getElementById("pagnation").innerHTML = "";
+                    document.getElementById("pagnation").innerHTML += `<div class="tablenav-pages">
+                        <span class="displaying-num">` + result + ` items</span>
+                        <span class="pagination-links">
+                            <a class="first-page button" onclick="(GetRecordes(numOfRecordInOnePage, 1, `+ numOfAllPages + `,'` + urlBody + `'));"><span aria-hidden="true">«</span></a>
+                            <a class="prev-page button" onclick="(GetRecordes(numOfRecordInOnePage, (parseInt(currentRowNumber) - 1), `+ numOfAllPages + `,'` + urlBody + `'));"><span aria-hidden="true">‹</span></a>
+                            <span class="screen-reader-text">Current Page </span><span id="table-paging" class="paging-input"><span class="tablenav-paging-text"><input type="number" id="currentPageNumber" min="0" max="`+ numOfAllPages + `" value="` + currentRowNumber + `"/> of <span class="total-pages">` + countOfPages + `</span></span></span>
+                            <a class="next-page button" onclick="(GetRecordes(numOfRecordInOnePage, (currentRowNumber + 1), `+ numOfAllPages + `,'` + urlBody + `'));"><span aria-hidden="true">›</span></a>
+                            <a class="last-page button" onclick="(GetRecordes(numOfRecordInOnePage, `+ countOfPages + `, ` + numOfAllPages + `,'` + urlBody + `'))"><span aria-hidden="true">»</span></a>
+                            <a class="button" onclick="(GetRecordes(numOfRecordInOnePage, (getCurrentPageNum()), ` + numOfAllPages + `,'` + urlBody + `'))">Go</a>
+                        </span>
+                    </div>`;
+                    
+                    if (result == 0) {
+                        document.getElementById("tableShowAttendance").innerHTML = "";          
+                        document.getElementById('tableShowAttendance').innerHTML = "<tr><td colspan='7'>No Record Matched</td></tr>";
+                    }
+
+                    GetRecordes(numOfRecordInOnePage, 1, numOfAllPages, urlBody);
+
+                }
+            }
+        );
+
+
+    }
+
+</script>
